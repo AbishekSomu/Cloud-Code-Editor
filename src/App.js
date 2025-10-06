@@ -45,13 +45,19 @@ function App() {
   const [currentFile, setCurrentFile] = useState(null);
   const [code, setCode] = useState("// Start coding...");
   const [output, setOutput] = useState("");
+  const [darkMode, setDarkMode] = useState(true);
 
   const projectId = "demo-project";
 
-  // Login
+  // Google login
   const login = async () => {
-    const result = await signInWithPopup(auth, provider);
-    setUser(result.user);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      setUser(result.user);
+    } catch (err) {
+      console.error("Login error:", err);
+      alert("Google login failed.");
+    }
   };
 
   // Load files
@@ -140,28 +146,22 @@ function App() {
 
     const language = currentFile.language;
 
-    // JavaScript: eval
     if (language === "javascript") {
       try {
         let logs = [];
         const originalLog = console.log;
-
         console.log = (...args) => {
           logs.push(args.join(" "));
           originalLog(...args);
         };
-
         const result = eval(code);
         console.log = originalLog;
-
         if (logs.length > 0) setOutput(logs.join("\n"));
         else if (result !== undefined) setOutput(String(result));
         else setOutput("No output");
       } catch (err) {
         setOutput("Error: " + err.message);
       }
-
-    // HTML: iframe preview
     } else if (language === "html") {
       setOutput("");
       const iframe = document.createElement("iframe");
@@ -174,19 +174,10 @@ function App() {
       iframe.contentDocument.open();
       iframe.contentDocument.write(code);
       iframe.contentDocument.close();
-
-    // Other languages: Judge0
     } else {
       try {
         setOutput("⏳ Running your " + language + " code...");
-
-        const languageMap = {
-          python: 71,
-          cpp: 54,
-          c: 50,
-          java: 62,
-        };
-
+        const languageMap = { python: 71, cpp: 54, c: 50, java: 62 };
         const response = await axios.post(
           "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true",
           { source_code: code, language_id: languageMap[language] },
@@ -198,9 +189,7 @@ function App() {
             },
           }
         );
-
         const result = response.data;
-
         if (result.stderr) setOutput("❌ Runtime Error:\n" + result.stderr);
         else if (result.compile_output) setOutput("⚠️ Compilation Error:\n" + result.compile_output);
         else if (result.stdout) setOutput(result.stdout.trim());
@@ -212,28 +201,34 @@ function App() {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
+    <div className={darkMode ? "app dark" : "app light"}>
       {!user ? (
-        <button onClick={login}>Login with Google</button>
+        <div className="login-container">
+          <div className="login-box">
+            <h1>Cloud Code Editor</h1>
+            <button className="google-login" onClick={login}>
+              Login with Google
+            </button>
+            <div className="theme-toggle-login">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={darkMode}
+                  onChange={() => setDarkMode(!darkMode)}
+                />
+                Dark Mode
+              </label>
+            </div>
+          </div>
+        </div>
       ) : (
-        <>
-          {/* Sidebar */}
-          <div style={{ width: "220px", background: "#222", color: "#fff", padding: "10px" }}>
+        <div className="main-container">
+          <div className="sidebar">
             <h4>Files</h4>
             <button onClick={newFile}>+ New File</button>
-            <ul style={{ padding: 0 }}>
+            <ul>
               {files.map((f) => (
-                <li
-                  key={f.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    cursor: "pointer",
-                    fontWeight: f.name === currentFile?.name ? "bold" : "normal",
-                    listStyle: "none",
-                  }}
-                >
+                <li key={f.id} className={f.name === currentFile?.name ? "active" : ""}>
                   <span
                     onClick={() => {
                       setCurrentFile(f);
@@ -242,38 +237,33 @@ function App() {
                   >
                     {f.name}
                   </span>
-                  <button
-                    onClick={() => deleteFile(f.name)}
-                    style={{
-                      background: "red",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      padding: "2px 6px",
-                      cursor: "pointer",
-                      marginLeft: "5px",
-                    }}
-                  >
-                    Delete
-                  </button>
+                  <button onClick={() => deleteFile(f.name)}>Delete</button>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Editor + Output */}
-          <div style={{ flex: 1 }}>
+          <div className="editor-container">
+            <div className="top-bar">
+              <button onClick={() => setDarkMode(!darkMode)}>
+                {darkMode ? "Light Mode" : "Dark Mode"}
+              </button>
+            </div>
+
             {currentFile ? (
               <>
-                <h3>Editing: {currentFile.name}</h3>
-                <button onClick={runCode}>Run Code</button>
+                <div className="editor-header">
+                  <h3>Editing: {currentFile.name}</h3>
+                  <button onClick={runCode}>Run Code</button>
+                </div>
                 <Editor
                   height="70vh"
                   language={currentFile.language}
                   value={code}
                   onChange={saveFile}
+                  theme={darkMode ? "vs-dark" : "light"}
                 />
-                <div style={{ background: "#111", color: "lime", padding: "10px" }}>
+                <div className="output-box">
                   <h4>Output:</h4>
                   {currentFile.language === "html" ? (
                     <div id="html-output" />
@@ -283,10 +273,10 @@ function App() {
                 </div>
               </>
             ) : (
-              <p style={{ padding: "20px" }}>Select a file to start editing</p>
+              <p className="select-file-text">Select a file to start editing</p>
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -1,13 +1,254 @@
-body {
+/* Global Styles */
+body, html {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  padding: 0;
+  height: 100%;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* Theme Colors */
+.app.dark {
+  background-color: #121212;
+  color: #fff;
+}
+
+.app.light {
+  background-color: #f5f5f5;
+  color: #111;
+}
+
+/* Login Page */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.login-box {
+  background-color: rgba(30, 30, 30, 0.95);
+  padding: 40px 60px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  transition: all 0.3s ease;
+}
+
+.app.light .login-box {
+  background-color: #fff;
+  color: #111;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+.login-box h1 {
+  margin-bottom: 30px;
+  font-size: 2rem;
+}
+
+.google-login {
+  background-color: #4285F4;
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.google-login:hover {
+  background-color: #357ae8;
+}
+
+/* Dark mode toggle (top right) */
+.top-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 10px 15px;
+}
+
+.top-bar label {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.top-bar input[type="checkbox"] {
+  margin-left: 8px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* Main App Layout */
+.main-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background-color: #1e1e1e;
+  border-right: 1px solid #333;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.app.light .sidebar {
+  background-color: #eaeaea;
+  color: #111;
+  border-right: 1px solid #ccc;
+}
+
+.sidebar h4 {
+  margin-bottom: 10px;
+}
+
+.sidebar button {
+  margin-bottom: 10px;
+  background-color: #007acc;
+  color: #fff;
+  padding: 6px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.sidebar button:hover {
+  background-color: #005f99;
+}
+
+.sidebar ul {
+  list-style: none;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.sidebar li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.sidebar li span:hover {
+  background-color: #333;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.app.light .sidebar li span:hover {
+  background-color: #ddd;
+}
+
+.sidebar li.active span {
+  font-weight: bold;
+}
+
+/* Delete button */
+.sidebar li button {
+  background-color: #e53935;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.sidebar li button:hover {
+  background-color: #b71c1c;
+}
+
+/* Editor Container */
+.editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  overflow: hidden;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+/* Run Code Button */
+.editor-header button {
+  background-color: #007acc;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.editor-header button:hover {
+  background-color: #005f99;
+}
+
+/* Output Box */
+.output-box {
+  background-color: #1b1b1b;
+  color: #00ff00;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+  height: 200px;
+  overflow-y: auto;
+}
+
+.app.light .output-box {
+  background-color: #f0f0f0;
+  color: #111;
+  border: 1px solid #ccc;
+}
+
+/* Scrollbars */
+.sidebar ul::-webkit-scrollbar,
+.output-box::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar ul::-webkit-scrollbar-thumb,
+.output-box::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 4px;
+}
+
+.sidebar ul::-webkit-scrollbar-track,
+.output-box::-webkit-scrollbar-track {
+  background-color: #1e1e1e;
+}
+
+.app.light .sidebar ul::-webkit-scrollbar-track,
+.app.light .output-box::-webkit-scrollbar-track {
+  background-color: #eaeaea;
+}
+
+.app.light .sidebar ul::-webkit-scrollbar-thumb,
+.app.light .output-box::-webkit-scrollbar-thumb {
+  background-color: #888;
+}
+
+/* HTML iframe output */
+#iframe-container iframe,
+#html-output iframe {
+  border-radius: 5px;
+  background-color: white;
+  width: 100%;
+  height: 300px;
 }
