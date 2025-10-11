@@ -47,7 +47,7 @@ function App() {
   const [output, setOutput] = useState("");
   const [darkMode, setDarkMode] = useState(true);
 
-  const projectId = "demo-project";
+  const projectId = "cloud-code";
 
   // Google login
   const login = async () => {
