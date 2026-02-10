@@ -889,7 +889,9 @@ export default function App() {
           </div>
           <div className="login-card">
             <div className="login-left">
-              <div className="brand-mark">⟡</div>
+              <div className="brand-mark">
+                <img src="/icon.png" alt="Cloud Code Editor" className="brand-image" />
+              </div>
               <h1>Cloud Code Editor</h1>
               <p className="login-subtitle">Write, run, and collaborate in real time.</p>
               <ul className="login-features">
