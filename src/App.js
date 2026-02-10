@@ -26,7 +26,7 @@ const starterTemplates = {
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello World" << endl;\n    return 0;\n}`,
   c: `#include <stdio.h>\n\nint main() {\n    printf("Hello World\\n");\n    return 0;\n}`,
   java: `public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World");\n    }\n}`,
-  csharp: `using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine(\"Hello World\");\n    }\n}`,
+  csharp: `using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine("Hello World");\n    }\n}`,
   css: `/* CSS file */\nbody {\n  font-family: sans-serif;\n}\n`,
   html: `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8" />\n  <title>Hello World</title>\n</head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>`,
   plaintext: `This is a new text file.`,
@@ -79,7 +79,7 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatText, setChatText] = useState("");
   const [showChat, setShowChat] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  
   const [globalUnreadCount, setGlobalUnreadCount] = useState(0);
   const [typingUsers, setTypingUsers] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -278,7 +278,7 @@ export default function App() {
   useEffect(() => {
     if (!user || !currentFile) {
       setChatMessages([]);
-      setUnreadCount(0);
+      // local unread is no longer used; global badge handles it
       return;
     }
     const fileKey = fileKeyFor(currentFile);
@@ -354,7 +354,7 @@ export default function App() {
       const ts = m.createdAt?.toMillis ? m.createdAt.toMillis() : 0;
       return ts > lastSeen;
     }).length;
-    setUnreadCount(showChat ? 0 : count);
+    // local unread is no longer used; global badge handles it
   }, [chatMessages, showChat, user, currentFile]);
 
   const sendChat = async () => {
@@ -678,6 +678,7 @@ export default function App() {
           logs.push(args.join(" "));
           originalLog(...args);
         };
+        // eslint-disable-next-line no-eval
         const result = eval(code);
         console.log = originalLog;
         if (logs.length > 0) setConsoleOutput(logs.join("\n"));
@@ -997,7 +998,7 @@ export default function App() {
                             } catch {
                               // ignore storage errors
                             }
-                            setUnreadCount(0);
+                            // local unread is no longer used; global badge handles it
                           }
                           return next;
                         });
