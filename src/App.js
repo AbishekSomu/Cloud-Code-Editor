@@ -112,7 +112,7 @@ export default function App() {
       ? `project:${ownerId}:${file.projectId}:${file.name}`
       : `standalone:${ownerId}:${file.name}`;
   }, [user?.uid]);
-  const safeId = (name) => encodeURIComponent(name);
+  const safeId = useCallback((name) => encodeURIComponent(name), []);
   const fileIcon = () => "\u{1F4C4}";
 
   const getLocalDateKey = () => {
