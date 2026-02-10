@@ -349,12 +349,6 @@ export default function App() {
     if (!user || !currentFile) return;
     const fileKey = fileKeyFor(currentFile);
     const storageKey = `chatLastSeen:${fileKey}:${user.uid}`;
-    let lastSeen = 0;
-    try {
-      lastSeen = Number(localStorage.getItem(storageKey) || "0");
-    } catch {
-      lastSeen = 0;
-    }
     // local unread is no longer used; global badge handles it
   }, [chatMessages, showChat, user, currentFile]);
 
