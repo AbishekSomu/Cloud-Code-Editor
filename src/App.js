@@ -26,7 +26,13 @@ const starterTemplates = {
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello World" << endl;\n    return 0;\n}`,
   c: `#include <stdio.h>\n\nint main() {\n    printf("Hello World\\n");\n    return 0;\n}`,
   java: `public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World");\n    }\n}`,
-  csharp: `using System;\n\npublic class Program {\n    public static void Main() {\n        Console.WriteLine("Hello World");\n    }\n}`,
+  csharp: `using System;
+
+public class Program {
+    public static void Main() {
+        Console.WriteLine("Hello World");
+    }
+}`,
   css: `/* CSS file */\nbody {\n  font-family: sans-serif;\n}\n`,
   html: `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8" />\n  <title>Hello World</title>\n</head>\n<body>\n  <h1>Hello World</h1>\n</body>\n</html>`,
   plaintext: `This is a new text file.`,
