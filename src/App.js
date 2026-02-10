@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Editor from "@monaco-editor/react";
 import { auth, provider, db } from "./firebase";
 import { signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
@@ -101,18 +101,16 @@ export default function App() {
   const editorContainerRef = useRef(null);
   const typingTimerRef = useRef(null);
 
-  const projectRoot = (uid) => collection(db, "users", uid, "projects");
-  const standaloneFilesRoot = (uid) => collection(db, "users", uid, "files");
   const projectFilesRoot = (uid, projectId) => collection(db, "users", uid, "projects", projectId, "files");
   const presenceRoot = (fileKey) => collection(db, "presence", fileKey, "users");
   const chatRoot = (fileKey) => collection(db, "chat", fileKey, "messages");
   const typingRoot = (fileKey) => collection(db, "chat", fileKey, "typing");
-  const fileKeyFor = (file) => {
+  const fileKeyFor = useCallback((file) => {
     const ownerId = file.ownerId || user?.uid || "unknown";
     return file.projectId
       ? `project:${ownerId}:${file.projectId}:${file.name}`
       : `standalone:${ownerId}:${file.name}`;
-  };
+  }, [user?.uid]);
   const safeId = (name) => encodeURIComponent(name);
   const fileIcon = () => "\u{1F4C4}";
 
