@@ -100,6 +100,7 @@ export default function App() {
   const presenceWriteTimerRef = useRef(null);
   const editorContainerRef = useRef(null);
   const typingTimerRef = useRef(null);
+  const lastLocalEditRef = useRef(0);
 
   const projectFilesRoot = (uid, projectId) => collection(db, "users", uid, "projects", projectId, "files");
   const presenceRoot = (fileKey) => collection(db, "presence", fileKey, "users");
@@ -495,6 +496,7 @@ export default function App() {
 
   const saveFile = async (newCode) => {
     setCode(newCode);
+    lastLocalEditRef.current = Date.now();
     if (!currentFile || !user) return;
 
     try {
@@ -528,6 +530,25 @@ export default function App() {
       console.error("Save error:", err);
     }
   };
+
+  useEffect(() => {
+    if (!user || !currentFile) return;
+    const ownerId = currentFile.ownerId || user.uid;
+    const fileId = currentFile.id || safeId(currentFile.name);
+    const docRef = currentFile.projectId
+      ? doc(db, "users", ownerId, "projects", currentFile.projectId, "files", fileId)
+      : doc(db, "users", ownerId, "files", fileId);
+
+    const unsub = onSnapshot(docRef, (snap) => {
+      const data = snap.data();
+      if (!data) return;
+      const incoming = data.content ?? "";
+      if (incoming === code) return;
+      if (Date.now() - lastLocalEditRef.current < 500) return;
+      setCode(incoming);
+    });
+    return () => unsub();
+  }, [user, currentFile, code, safeId]);
 
   const newProject = async () => {
     if (!user) return alert("Please login first.");
