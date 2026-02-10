@@ -348,7 +348,6 @@ export default function App() {
   useEffect(() => {
     if (!user || !currentFile) return;
     const fileKey = fileKeyFor(currentFile);
-    const storageKey = `chatLastSeen:${fileKey}:${user.uid}`;
     // local unread is no longer used; global badge handles it
   }, [chatMessages, showChat, user, currentFile]);
 
