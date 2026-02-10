@@ -355,11 +355,6 @@ export default function App() {
     } catch {
       lastSeen = 0;
     }
-    const count = chatMessages.filter((m) => {
-      if (m.uid === user.uid) return false;
-      const ts = m.createdAt?.toMillis ? m.createdAt.toMillis() : 0;
-      return ts > lastSeen;
-    }).length;
     // local unread is no longer used; global badge handles it
   }, [chatMessages, showChat, user, currentFile]);
 
