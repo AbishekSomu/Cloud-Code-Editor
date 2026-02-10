@@ -297,7 +297,7 @@ export default function App() {
       unsub();
       deleteDoc(presenceDoc).catch(() => {});
     };
-  }, [user, currentFile]);
+  }, [user, currentFile, fileKeyFor]);
 
   useEffect(() => {
     if (!user || !currentFile) {
@@ -312,7 +312,7 @@ export default function App() {
       setChatMessages(list);
     });
     return () => unsub();
-  }, [user, currentFile]);
+  }, [user, currentFile, fileKeyFor]);
 
   useEffect(() => {
     if (!user || !currentFile) {
@@ -333,7 +333,7 @@ export default function App() {
       setTypingUsers(list);
     });
     return () => unsub();
-  }, [user, currentFile]);
+  }, [user, currentFile, fileKeyFor]);
 
   useEffect(() => {
     if (!user) {
