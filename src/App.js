@@ -346,8 +346,6 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (!user || !currentFile) return;
-    const fileKey = fileKeyFor(currentFile);
     // local unread is no longer used; global badge handles it
   }, [chatMessages, showChat, user, currentFile]);
 
