@@ -9,6 +9,7 @@ import {
   query,
   orderBy,
   limit,
+  where,
   doc,
   setDoc,
   onSnapshot,
@@ -106,7 +107,12 @@ export default function App() {
   const presenceRoot = (fileKey) => collection(db, "presence", fileKey, "users");
   const chatRoot = (fileKey) => collection(db, "chat", fileKey, "messages");
   const typingRoot = (fileKey) => collection(db, "chat", fileKey, "typing");
-  const fileKeyFor = (file) => (file.projectId ? `project:${file.projectId}:${file.name}` : `standalone:${file.name}`);
+  const fileKeyFor = (file) => {
+    const ownerId = file.ownerId || user?.uid || "unknown";
+    return file.projectId
+      ? `project:${ownerId}:${file.projectId}:${file.name}`
+      : `standalone:${ownerId}:${file.name}`;
+  };
   const safeId = (name) => encodeURIComponent(name);
   const fileIcon = () => "\u{1F4C4}";
 
@@ -176,14 +182,28 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
-    const unsubFiles = onSnapshot(standaloneFilesRoot(user.uid), (snapshot) => {
-      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setStandaloneFiles(list);
+    const unsubProjects = onSnapshot(collectionGroup(db, "projects"), (snapshot) => {
+      const list = snapshot.docs.map((d) => {
+        const data = d.data();
+        const pathParts = d.ref.path.split("/");
+        const ownerId = data.ownerId || pathParts[1];
+        const isPublic = data.isPublic !== false;
+        return { id: d.id, ownerId, isPublic, ...data };
+      }).filter((p) => p.isPublic || p.ownerId === user.uid);
+      setProjects(list);
     });
 
-    const unsubProjects = onSnapshot(projectRoot(user.uid), (snapshot) => {
-      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setProjects(list);
+    const unsubFiles = onSnapshot(collectionGroup(db, "files"), (snapshot) => {
+      const list = snapshot.docs.map((d) => {
+        const data = d.data();
+        const pathParts = d.ref.path.split("/");
+        const ownerId = data.ownerId || pathParts[1];
+        const isPublic = data.isPublic !== false;
+        const isProjectFile = d.ref.path.includes("/projects/");
+        const parentType = data.parentType || (isProjectFile ? "project" : "standalone");
+        return { id: d.id, ownerId, isPublic, parentType, ...data };
+      }).filter((f) => f.parentType === "standalone" && (f.isPublic || f.ownerId === user.uid));
+      setStandaloneFiles(list);
     });
 
     return () => {
@@ -435,8 +455,19 @@ export default function App() {
 
     if (projectListenersRef.current[expandedProjectId]) return;
 
-    const unsub = onSnapshot(projectFilesRoot(user.uid, expandedProjectId), (snapshot) => {
-      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const project = projects.find((p) => p.id === expandedProjectId);
+    const ownerId = project?.ownerId;
+    const q = ownerId
+      ? query(collectionGroup(db, "files"), where("projectId", "==", expandedProjectId), where("ownerId", "==", ownerId))
+      : query(collectionGroup(db, "files"), where("projectId", "==", expandedProjectId));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map((d) => {
+        const data = d.data();
+        const pathParts = d.ref.path.split("/");
+        const ownerId = data.ownerId || pathParts[1];
+        const isPublic = data.isPublic !== false;
+        return { id: d.id, ownerId, isPublic, ...data };
+      }).filter((f) => f.isPublic || f.ownerId === user.uid);
       setProjectFilesMap((prev) => ({ ...prev, [expandedProjectId]: list }));
     });
 
@@ -448,7 +479,7 @@ export default function App() {
         delete projectListenersRef.current[expandedProjectId];
       }
     };
-  }, [expandedProjectId, user]);
+  }, [expandedProjectId, user, projects]);
 
   const detectLanguage = (name) => {
     const lower = name.toLowerCase();
@@ -470,18 +501,27 @@ export default function App() {
 
     try {
       const fileId = currentFile.id || safeId(currentFile.name);
+      const isPublic = currentFile.isPublic !== false;
+      const ownerId = currentFile.ownerId || user.uid;
       if (currentFile.projectId) {
-        await setDoc(doc(db, "users", user.uid, "projects", currentFile.projectId, "files", fileId), {
+        await setDoc(doc(db, "users", ownerId, "projects", currentFile.projectId, "files", fileId), {
           name: currentFile.name,
           language: currentFile.language,
           content: newCode,
+          ownerId,
+          isPublic,
+          projectId: currentFile.projectId,
+          parentType: "project",
           updatedAt: serverTimestamp(),
         });
       } else {
-        await setDoc(doc(db, "users", user.uid, "files", fileId), {
+        await setDoc(doc(db, "users", ownerId, "files", fileId), {
           name: currentFile.name,
           language: currentFile.language,
           content: newCode,
+          ownerId,
+          isPublic,
+          parentType: "standalone",
           updatedAt: serverTimestamp(),
         });
       }
@@ -496,7 +536,12 @@ export default function App() {
     const name = prompt("Enter new project name (no slashes):");
     if (!name) return;
     try {
-      await setDoc(doc(db, "users", user.uid, "projects", name), { name, createdAt: serverTimestamp() });
+      await setDoc(doc(db, "users", user.uid, "projects", name), {
+        name,
+        ownerId: user.uid,
+        isPublic: true,
+        createdAt: serverTimestamp(),
+      });
       setExpandedProjectId(name);
     } catch (err) {
       console.error("Create project error:", err);
@@ -509,7 +554,16 @@ export default function App() {
     const name = prompt("Enter filename (e.g. main.py or notes.txt). You can include folders like css/style.css:");
     if (!name) return;
     const language = detectLanguage(name);
-    const fileData = { name, language, content: starterTemplates[language] || "// New file", updatedAt: serverTimestamp() };
+    const fileData = {
+      name,
+      language,
+      content: starterTemplates[language] || "// New file",
+      ownerId: user.uid,
+      isPublic: true,
+      projectId,
+      parentType: "project",
+      updatedAt: serverTimestamp(),
+    };
     try {
       await setDoc(doc(db, "users", user.uid, "projects", projectId, "files", safeId(name)), fileData);
     } catch (err) {
@@ -523,7 +577,15 @@ export default function App() {
     const name = prompt("Enter filename (e.g. script.js or notes.txt). You can include folders like css/style.css:");
     if (!name) return;
     const language = detectLanguage(name);
-    const fileData = { name, language, content: starterTemplates[language] || "// New file", updatedAt: serverTimestamp() };
+    const fileData = {
+      name,
+      language,
+      content: starterTemplates[language] || "// New file",
+      ownerId: user.uid,
+      isPublic: true,
+      parentType: "standalone",
+      updatedAt: serverTimestamp(),
+    };
     try {
       await setDoc(doc(db, "users", user.uid, "files", safeId(name)), fileData);
     } catch (err) {
@@ -537,7 +599,8 @@ export default function App() {
     if (!window.confirm(`Delete file "${file.name}"?`)) return;
     try {
       const fileId = file.id || safeId(file.name);
-      await deleteDoc(doc(db, "users", user.uid, "files", fileId));
+      const ownerId = file.ownerId || user.uid;
+      await deleteDoc(doc(db, "users", ownerId, "files", fileId));
       if (currentFile?.name === file.name && !currentFile.projectId) {
         setCurrentFile(null);
         setCode("");
@@ -591,7 +654,8 @@ export default function App() {
     if (!window.confirm(`Delete file "${file.name}" from project "${projectId}"?`)) return;
     try {
       const fileId = file.id || safeId(file.name);
-      await deleteDoc(doc(db, "users", user.uid, "projects", projectId, "files", fileId));
+      const ownerId = file.ownerId || user.uid;
+      await deleteDoc(doc(db, "users", ownerId, "projects", projectId, "files", fileId));
       if (currentFile?.name === file.name && currentFile?.projectId === projectId) {
         setCurrentFile(null);
         setCode("");
@@ -786,13 +850,13 @@ export default function App() {
   };
 
   const openStandaloneFile = (f) => {
-    setCurrentFile({ ...f, projectId: null });
+    setCurrentFile({ ...f, projectId: null, ownerId: f.ownerId || user?.uid });
     setCode(f.content || "");
     setSavedAt(null);
   };
 
   const openProjectFile = (projectId, f) => {
-    setCurrentFile({ ...f, projectId });
+    setCurrentFile({ ...f, projectId, ownerId: f.ownerId || user?.uid });
     setCode(f.content || "");
     setSavedAt(null);
   };
@@ -857,11 +921,28 @@ export default function App() {
                     .map((project) => {
                     const files = projectFilesMap[project.id] || [];
                     const hasFiles = files.length > 0;
+                    const isOwner = project.ownerId === user.uid;
                     return (
                       <div key={project.id} className="project-card">
                         <div className="project-folder" onClick={() => setExpandedProjectId((p) => (p === project.id ? null : project.id))}>
                           <div className="folder-icon">{"\u{1F4C1}"}</div>
-                          <div className="project-name">{project.name}</div>
+                          <div className="project-name">
+                            {project.name}
+                            {isOwner && (
+                              <button
+                                className="lock-toggle"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const next = project.isPublic === false;
+                                  const ownerId = project.ownerId || user.uid;
+                                  setDoc(doc(db, "users", ownerId, "projects", project.id), { isPublic: next }, { merge: true });
+                                }}
+                                title={project.isPublic === false ? "Private (locked)" : "Public"}
+                              >
+                                {project.isPublic === false ? "\u{1F512}" : "\u{1F513}"}
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="project-actions">
@@ -872,14 +953,16 @@ export default function App() {
                           >
                             {"\u2B07\uFE0F"}
                           </IconButton>
-                          <IconButton
-                            onClick={() => deleteProject(project.id)}
-                            title="Delete project"
-                            className="danger"
-                          >
-                            {"\u{1F5D1}"}
-                          </IconButton>
-                          <button onClick={() => newProjectFile(project.id)} title="Add file">+ Add File</button>
+                          {isOwner && (
+                            <IconButton
+                              onClick={() => deleteProject(project.id)}
+                              title="Delete project"
+                              className="danger"
+                            >
+                              {"\u{1F5D1}"}
+                            </IconButton>
+                          )}
+                          {isOwner && <button onClick={() => newProjectFile(project.id)} title="Add file">+ Add File</button>}
                         </div>
 
                         {expandedProjectId === project.id && (
@@ -889,18 +972,38 @@ export default function App() {
                               files.map((f) => (
                                 <div key={f.id} className="file-item">
                                 <div className="file-meta">
-                                  <span className="file-name" onClick={() => openProjectFile(project.id, f)}>
-                                    {fileIcon()} {f.name}
-                                  </span>
-                                  
+                                  <div className="file-meta-row">
+                                    <span className="file-name" onClick={() => openProjectFile(project.id, f)}>
+                                      {fileIcon()} {f.name}
+                                    </span>
+                                    {f.ownerId === user.uid && (
+                                      <button
+                                        className="lock-toggle"
+                                        onClick={() => {
+                                          const next = f.isPublic === false;
+                                          const ownerId = f.ownerId || user.uid;
+                                          setDoc(
+                                            doc(db, "users", ownerId, "projects", project.id, "files", f.id || safeId(f.name)),
+                                            { isPublic: next },
+                                            { merge: true }
+                                          );
+                                        }}
+                                        title={f.isPublic === false ? "Private (locked)" : "Public"}
+                                      >
+                                        {f.isPublic === false ? "\u{1F512}" : "\u{1F513}"}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                                   <div className="file-buttons">
                                     <IconButton onClick={() => downloadFile(f)} title="Download file" className="primary">
                                       {"\u2B07\uFE0F"}
                                     </IconButton>
-                                    <IconButton onClick={() => deleteProjectFile(project.id, f)} title="Delete file" className="danger">
-                                      {"\u274C"}
-                                    </IconButton>
+                                    {f.ownerId === user.uid && (
+                                      <IconButton onClick={() => deleteProjectFile(project.id, f)} title="Delete file" className="danger">
+                                        {"\u274C"}
+                                      </IconButton>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -928,17 +1031,37 @@ export default function App() {
                     .map((f) => (
                     <li key={f.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <div className="file-meta">
-                      <span style={{ cursor: "pointer" }} onClick={() => openStandaloneFile(f)}>
-                        {fileIcon()} {f.name}
-                      </span>
-                      
+                      <div className="file-meta-row">
+                        <span style={{ cursor: "pointer" }} onClick={() => openStandaloneFile(f)}>
+                          {fileIcon()} {f.name}
+                        </span>
+                        {f.ownerId === user.uid && (
+                          <button
+                            className="lock-toggle"
+                            onClick={() => {
+                              const next = f.isPublic === false;
+                              const ownerId = f.ownerId || user.uid;
+                              setDoc(
+                                doc(db, "users", ownerId, "files", f.id || safeId(f.name)),
+                                { isPublic: next },
+                                { merge: true }
+                              );
+                            }}
+                            title={f.isPublic === false ? "Private (locked)" : "Public"}
+                          >
+                            {f.isPublic === false ? "\u{1F512}" : "\u{1F513}"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                       <IconButton onClick={() => downloadFile(f)} title="Download file" className="primary compact">
                         {"\u2B07\uFE0F"}
                       </IconButton>
-                      <IconButton onClick={() => deleteFile(f)} title="Delete file" className="danger compact">
-                        {"\u274C"}
-                      </IconButton>
+                      {f.ownerId === user.uid && (
+                        <IconButton onClick={() => deleteFile(f)} title="Delete file" className="danger compact">
+                          {"\u274C"}
+                        </IconButton>
+                      )}
                     </li>
                   ))}
                 </ul>

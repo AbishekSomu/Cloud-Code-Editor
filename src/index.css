@@ -455,6 +455,21 @@ body {
   min-width: 0;
   flex: 1;
 }
+.file-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.lock-toggle {
+  margin-left: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--c-muted);
+}
+.lock-toggle:hover { color: var(--c-text); }
 .file-item .file-name { cursor: pointer; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; }
 .file-buttons { display: flex; gap: 6px; }
 
